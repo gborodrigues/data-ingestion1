@@ -67,24 +67,18 @@ def clean_string(df, field):
     return df
 
 
-def map_dtype_to_mysql(dtype):
-    if pd.api.types.is_integer_dtype(dtype):
-        return 'INT'
-    elif pd.api.types.is_float_dtype(dtype):
-        return 'FLOAT'
-    elif pd.api.types.is_bool_dtype(dtype):
-        return 'BOOLEAN'
-    elif pd.api.types.is_datetime64_any_dtype(dtype):
-        return 'DATETIME'
-    else:
-        return 'VARCHAR(255)'
+def clean_column_name(name):
+    if isinstance(name, str):
+        name = name.replace(' ', '_').replace('-', '_')
+        name = ''.join(c if c.isalnum() or c == '_' else '_' for c in name)
+    return name
     
 
 def create_table(df):
     table_name = "bancos"
-    fields = ", ".join([f"{col} {map_dtype_to_mysql(dtype)}" for col, dtype in zip(df.columns, df.dtypes)])
+    fields = ", ".join([f"{col} VARCHAR(255)" for col, dtype in zip(df.columns, df.dtypes)])
     create_table_sql = f"CREATE TABLE {table_name} ({fields});"
-    print(create_table_sql)
+    print(cursor)
     cursor.execute(create_table_sql)
 
 
@@ -101,8 +95,9 @@ if __name__ == "__main__":
         dataframes['ReclamaçΣes'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
         merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
         merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
+        merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
         create_table(merge_all)
-        # print(merge_all)
+        print(merge_all.columns)
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
