@@ -1,25 +1,16 @@
 import mysql.connector
 import os
 import pandas as pd
+import numpy as np
 
-def connect_to_db():
-    db_config = {
-        'user': os.getenv('DB_USER'),
-        'password': os.getenv('DB_PASSWORD'),
-        'host': os.getenv('DB_HOST'),
-        'database': os.getenv('DB_DATABASE')
-    }
+db_config = {
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'host': os.getenv('DB_HOST'),
+    'database': os.getenv('DB_DATABASE')
+}
 
-    try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-        # cursor.execute("SELECT DATABASE();")
-        # record = cursor.fetchone()
-        # print(cursor)
-        return cursor
-    except Exception as err:
-        print(f"Error: {err}")
-
+table_name = "tb_banco"
 
 def read_csv_files_in_directory(directory_path):
     files = os.listdir(directory_path)
@@ -65,6 +56,7 @@ def clean_string(df, field):
 
     df["campo_limpo"] = df[field].str.replace(pattern, '', regex=True)
     df["campo_limpo"] = df["campo_limpo"].str.upper()
+    df.replace(np.nan, '', inplace=True)
     return df
 
 
@@ -75,17 +67,31 @@ def clean_column_name(name):
     return name
     
 
-def create_table(df, cursor):
-    table_name = "bancos"
+def create_table(df):
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor()
+    table_name = "tb_banco"
     fields = ", ".join([f"{col} VARCHAR(255)" for col, dtype in zip(df.columns, df.dtypes)])
-    create_table_sql = f"CREATE TABLE {table_name} ({fields});"
+    create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({fields});"
     cursor.execute(create_table_sql)
-    print(cursor)
+    insert_sql = f"INSERT INTO {table_name} ({', '.join(df.columns)}) VALUES ({', '.join(['%s'] * len(df.columns))})"
+    for row in df.itertuples(index=False, name=None):
+        cursor.execute(insert_sql, row)
+    conn.commit()
+
+
+def insert_data(df):
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor()
+    table_name = "tb_banco"
+    insert_sql = f"INSERT INTO {table_name} ({', '.join(df.columns)}) VALUES ({', '.join(['%s'] * len(df.columns))})"
+    for row in df.itertuples(index=False, name=None):
+        cursor.execute(insert_sql, row)
+    conn.commit()
 
 
 if __name__ == "__main__":
     try:
-        cursor = connect_to_db()
         directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
         dataframes = {}
         for diretory in directories_paths:
@@ -97,6 +103,8 @@ if __name__ == "__main__":
         merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
         merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
         merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
+        create_table(merge_all)
+        insert_data(merge_all)
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
