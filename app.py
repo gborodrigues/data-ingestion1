@@ -63,6 +63,7 @@ def clean_string(df, field):
     )
 
     df["campo_limpo"] = df[field].str.replace(pattern, '', regex=True)
+    df["campo_limpo"] = df["campo_limpo"].str.upper()
     return df
 
 
@@ -75,9 +76,11 @@ if __name__ == "__main__":
             dataframe = read_csv_files_in_directory(diretory)
             dataframes[diretory] = dataframe
         dataframes['Bancos'] = clean_string(dataframes['Bancos'], 'Nome')
-        dataframes['Empregados'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
+        dataframes['Empregados'] = clean_string(dataframes['Empregados'], 'employer_name')
+        dataframes['ReclamaçΣes'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
         merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
-        print(merged_df)
+        merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
+        print(merge_all)
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
