@@ -2,8 +2,6 @@ import mysql.connector
 import os
 import pandas as pd
 
-cursor = None
-
 def connect_to_db():
     db_config = {
         'user': os.getenv('DB_USER'),
@@ -15,6 +13,9 @@ def connect_to_db():
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
+        # cursor.execute("SELECT DATABASE();")
+        # record = cursor.fetchone()
+        # print(cursor)
         return cursor
     except Exception as err:
         print(f"Error: {err}")
@@ -74,17 +75,17 @@ def clean_column_name(name):
     return name
     
 
-def create_table(df):
+def create_table(df, cursor):
     table_name = "bancos"
     fields = ", ".join([f"{col} VARCHAR(255)" for col, dtype in zip(df.columns, df.dtypes)])
     create_table_sql = f"CREATE TABLE {table_name} ({fields});"
-    print(cursor)
     cursor.execute(create_table_sql)
+    print(cursor)
 
 
 if __name__ == "__main__":
     try:
-        # connect_to_db()
+        cursor = connect_to_db()
         directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
         dataframes = {}
         for diretory in directories_paths:
@@ -96,8 +97,6 @@ if __name__ == "__main__":
         merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
         merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
         merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
-        create_table(merge_all)
-        print(merge_all.columns)
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
