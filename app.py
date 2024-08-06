@@ -2,6 +2,8 @@ import mysql.connector
 import os
 import pandas as pd
 
+cursor = None
+
 def connect_to_db():
     db_config = {
         'user': os.getenv('DB_USER'),
@@ -13,9 +15,7 @@ def connect_to_db():
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
-        cursor.execute("SELECT DATABASE();")
-        record = cursor.fetchone()
-        print("You're connected: ", record)
+        return cursor
     except Exception as err:
         print(f"Error: {err}")
 
@@ -67,9 +67,30 @@ def clean_string(df, field):
     return df
 
 
+def map_dtype_to_mysql(dtype):
+    if pd.api.types.is_integer_dtype(dtype):
+        return 'INT'
+    elif pd.api.types.is_float_dtype(dtype):
+        return 'FLOAT'
+    elif pd.api.types.is_bool_dtype(dtype):
+        return 'BOOLEAN'
+    elif pd.api.types.is_datetime64_any_dtype(dtype):
+        return 'DATETIME'
+    else:
+        return 'VARCHAR(255)'
+    
+
+def create_table(df):
+    table_name = "bancos"
+    fields = ", ".join([f"{col} {map_dtype_to_mysql(dtype)}" for col, dtype in zip(df.columns, df.dtypes)])
+    create_table_sql = f"CREATE TABLE {table_name} ({fields});"
+    print(create_table_sql)
+    cursor.execute(create_table_sql)
+
+
 if __name__ == "__main__":
     try:
-        connect_to_db()
+        # connect_to_db()
         directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
         dataframes = {}
         for diretory in directories_paths:
@@ -80,7 +101,8 @@ if __name__ == "__main__":
         dataframes['ReclamaçΣes'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
         merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
         merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
-        print(merge_all)
+        create_table(merge_all)
+        # print(merge_all)
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
