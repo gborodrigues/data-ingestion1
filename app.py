@@ -10,6 +10,7 @@ db_config = {
     'database': os.getenv('DB_DATABASE')
 }
 
+conn = mysql.connector.connect(**db_config)
 table_name = "tb_banco"
 
 def read_csv_files_in_directory(directory_path):
@@ -68,9 +69,7 @@ def clean_column_name(name):
     
 
 def create_table(df):
-    conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
-    table_name = "tb_banco"
     fields = ", ".join([f"{col} VARCHAR(255)" for col, dtype in zip(df.columns, df.dtypes)])
     create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({fields});"
     cursor.execute(create_table_sql)
@@ -81,9 +80,7 @@ def create_table(df):
 
 
 def insert_data(df):
-    conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
-    table_name = "tb_banco"
     insert_sql = f"INSERT INTO {table_name} ({', '.join(df.columns)}) VALUES ({', '.join(['%s'] * len(df.columns))})"
     for row in df.itertuples(index=False, name=None):
         cursor.execute(insert_sql, row)
