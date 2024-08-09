@@ -1,35 +1,25 @@
+version: "3.9"
 services:
   db:
-    image: mysql:8.0
+    image: mysql/mysql-server:5.7
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: 'db'
+      MYSQL_ROOT_PASSWORD: 'Usp2024'
+      MYSQL_ROOT_HOST: '%'
     ports:
-      - "3306:3306"
+      - '3306:3306'
+    expose:
+      - '3306'
     volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - 'data:/var/lib/mysql'
+      - 'initial.sql:/docker-entrypoint-initdb.d/initial.sql'
 
-  app:
-    build: .
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_DATABASE: ${DB_DATABASE}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-    depends_on:
-      db:
-        condition: service_healthy
+# for WebUI
+  adminer:
+    image: adminer:4.8.1
     ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
+      - "8081:8080"
 
 volumes:
-  db_data:
+  data:
+  initial.sql:

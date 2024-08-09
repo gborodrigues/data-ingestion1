@@ -3,6 +3,11 @@ import os
 import pandas as pd
 import numpy as np
 
+print(os.getenv('DB_USER'))
+print(os.getenv('DB_PASSWORD'))
+print(os.getenv('DB_HOST'))
+print(os.getenv('DB_DATABASE'))
+
 db_config = {
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
@@ -11,7 +16,7 @@ db_config = {
 }
 
 conn = mysql.connector.connect(**db_config)
-table_name = "tb_banco"
+table_name = "bancos"
 
 def read_csv_files_in_directory(directory_path):
     files = os.listdir(directory_path)
