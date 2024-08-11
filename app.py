@@ -36,7 +36,7 @@ def read_csv_files_in_directory(directory_path):
 
 
 def create_raw_layer():
-    path = 'raw'
+    path = 'Dados/raw'
     os.makedirs(path, exist_ok=True)
     directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
     for diretory in directories_paths:
@@ -77,16 +77,16 @@ def clean_column_name(name):
     
 
 def create_trusted_layer():
-    path = 'trusted'
+    path = 'Dados/trusted'
     os.makedirs(path, exist_ok=True)
     directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
     field_to_clean_dict = {"Bancos": "Nome", "Empregados": "employer_name", "ReclamaçΣes": "Instituição financeira"}
     for diretory in directories_paths:
         os.makedirs(f'{path}/{diretory}', exist_ok=True)
-        dataframe = pd.read_csv(f'raw/{diretory}/output.csv', sep=';', encoding='latin-1')
+        dataframe = pd.read_csv(f'Dados/raw/{diretory}/output.csv', sep=';', encoding='latin-1')
         dataframe = clean_string(dataframe, field_to_clean_dict[diretory])
         dataframe = dataframe.astype(str)
-        dataframe.to_parquet(f'trusted/{diretory}/output.parquet')
+        dataframe.to_parquet(f'{path}/{diretory}/output.parquet')
 
 def create_table(df):
     cursor = conn.cursor()
@@ -108,12 +108,12 @@ def insert_data(df):
 
 
 def delivery_layer():
-    path = 'delivery'
+    path = 'Dados/delivery'
     os.makedirs(path, exist_ok=True)
     directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
     dataframes = {}
     for diretory in directories_paths:
-        dataframe = pd.read_parquet(f'trusted/{diretory}/output.parquet', engine='pyarrow')
+        dataframe = pd.read_parquet(f'Dados/trusted/{diretory}/output.parquet', engine='pyarrow')
         dataframes[diretory] = dataframe
     merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
     merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
