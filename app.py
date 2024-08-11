@@ -36,12 +36,13 @@ def read_csv_files_in_directory(directory_path):
 
 
 def create_raw_layer():
-    os.makedirs('raw', exist_ok=True)
+    path = 'raw'
+    os.makedirs(path, exist_ok=True)
     directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
-    dataframes = {}
     for diretory in directories_paths:
+        os.makedirs(f'{path}/{diretory}', exist_ok=True)
         dataframe = read_csv_files_in_directory(diretory)
-        dataframe.to_csv(f'raw/{diretory}.csv', index=False)
+        dataframe.to_csv(f'{path}/{diretory}/output.csv', index=False)
 
 def clean_string(df, field):
     pattern = (
@@ -76,6 +77,17 @@ def clean_column_name(name):
     return name
     
 
+def create_trusted_layer():
+    path = 'trusted'
+    os.makedirs(path, exist_ok=True)
+    directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
+    field_to_clean_dict = {"Bancos": "Nome", "Empregados": "employer_name", "ReclamaçΣes": "Instituição financeira"}
+    for diretory in directories_paths:
+        os.makedirs(f'{path}/{diretory}', exist_ok=True)
+        dataframe = pd.read_csv(f'raw/{diretory}/output.csv', sep=',', encoding='latin-1')
+        dataframe = clean_string(dataframe, field_to_clean_dict[diretory])
+        dataframe.to_parquet(f'trusted/{diretory}/output.parquet')
+
 def create_table(df):
     cursor = conn.cursor()
     fields = ", ".join([f"{col} VARCHAR(255)" for col, dtype in zip(df.columns, df.dtypes)])
@@ -98,10 +110,7 @@ def insert_data(df):
 if __name__ == "__main__":
     try:
         create_raw_layer()
-        
-        # dataframes['Bancos'] = clean_string(dataframes['Bancos'], 'Nome')
-        # dataframes['Empregados'] = clean_string(dataframes['Empregados'], 'employer_name')
-        # dataframes['ReclamaçΣes'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
+        create_trusted_layer()
         # merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
         # merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
         # merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
