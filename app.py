@@ -15,7 +15,7 @@ table_name = "tb_banco"
 
 def read_csv_files_in_directory(directory_path):
     files = os.listdir(directory_path)
-    csv_files = [file for file in files if file.endswith('.csv')]
+    csv_files = [file for file in files if file.endswith(('.csv', '.tsv'))]
     dataframes = []
     for csv_file in csv_files:
         file_path = os.path.join(directory_path, csv_file)
@@ -34,6 +34,14 @@ def read_csv_files_in_directory(directory_path):
     merged_df = pd.concat(dataframes, ignore_index=True)
     return merged_df
 
+
+def create_raw_layer():
+    os.makedirs('raw', exist_ok=True)
+    directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
+    dataframes = {}
+    for diretory in directories_paths:
+        dataframe = read_csv_files_in_directory(diretory)
+        dataframe.to_csv(f'raw/{diretory}.csv', index=False)
 
 def clean_string(df, field):
     pattern = (
@@ -89,19 +97,16 @@ def insert_data(df):
 
 if __name__ == "__main__":
     try:
-        directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
-        dataframes = {}
-        for diretory in directories_paths:
-            dataframe = read_csv_files_in_directory(diretory)
-            dataframes[diretory] = dataframe
-        dataframes['Bancos'] = clean_string(dataframes['Bancos'], 'Nome')
-        dataframes['Empregados'] = clean_string(dataframes['Empregados'], 'employer_name')
-        dataframes['ReclamaçΣes'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
-        merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
-        merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
-        merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
-        create_table(merge_all)
-        insert_data(merge_all)
+        create_raw_layer()
+        
+        # dataframes['Bancos'] = clean_string(dataframes['Bancos'], 'Nome')
+        # dataframes['Empregados'] = clean_string(dataframes['Empregados'], 'employer_name')
+        # dataframes['ReclamaçΣes'] = clean_string(dataframes['ReclamaçΣes'], 'Instituição financeira')
+        # merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
+        # merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
+        # merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
+        # create_table(merge_all)
+        # insert_data(merge_all)
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
