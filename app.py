@@ -107,15 +107,33 @@ def insert_data(df):
     conn.commit()
 
 
+def delivery_layer():
+    path = 'delivery'
+    os.makedirs(path, exist_ok=True)
+    directories_paths = ['Bancos', 'Empregados', 'ReclamaçΣes']
+    dataframes = {}
+    for diretory in directories_paths:
+        dataframe = pd.read_parquet(f'trusted/{diretory}/output.parquet', engine='pyarrow')
+        dataframes[diretory] = dataframe
+    merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
+    merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
+    merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
+    merge_all = merge_all.drop(['Nome_y', 'Segmento_y', 'CNPJ_y', 'Unnamed__14'], axis=1)
+    merge_all.columns = merge_all.columns.str.replace('_x', '')
+    create_table(merge_all)
+    insert_data(merge_all)
+    merge_all.to_parquet(f'{path}/dados_finais.parquet')
+
+
 if __name__ == "__main__":
     try:
+        print('Running raw layer...')
         create_raw_layer()
+        print('Running trusted_ layer...')
         create_trusted_layer()
-        # merged_df = pd.merge(dataframes['Bancos'], dataframes['ReclamaçΣes'], on=["campo_limpo"])
-        # merge_all = pd.merge(merged_df, dataframes['Empregados'], on="campo_limpo")
-        # merge_all.columns = [clean_column_name(col) for col in merge_all.columns]
-        # create_table(merge_all)
-        # insert_data(merge_all)
+        print('Running delivery_ layer...')
+        delivery_layer()
+        print('Finished script')
     except KeyboardInterrupt:
         print("Interrupted by user")
     except Exception as e:
