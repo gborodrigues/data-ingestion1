@@ -42,7 +42,7 @@ def create_raw_layer():
     for diretory in directories_paths:
         os.makedirs(f'{path}/{diretory}', exist_ok=True)
         dataframe = read_csv_files_in_directory(diretory)
-        dataframe.to_csv(f'{path}/{diretory}/output.csv', index=False)
+        dataframe.to_csv(f'{path}/{diretory}/output.csv', sep=';', index=False, encoding='latin-1')
 
 def clean_string(df, field):
     pattern = (
@@ -69,7 +69,6 @@ def clean_string(df, field):
     df.replace(np.nan, '', inplace=True)
     return df
 
-
 def clean_column_name(name):
     if isinstance(name, str):
         name = name.replace(' ', '_').replace('-', '_')
@@ -84,8 +83,9 @@ def create_trusted_layer():
     field_to_clean_dict = {"Bancos": "Nome", "Empregados": "employer_name", "ReclamaçΣes": "Instituição financeira"}
     for diretory in directories_paths:
         os.makedirs(f'{path}/{diretory}', exist_ok=True)
-        dataframe = pd.read_csv(f'raw/{diretory}/output.csv', sep=',', encoding='latin-1')
+        dataframe = pd.read_csv(f'raw/{diretory}/output.csv', sep=';', encoding='latin-1')
         dataframe = clean_string(dataframe, field_to_clean_dict[diretory])
+        dataframe = dataframe.astype(str)
         dataframe.to_parquet(f'trusted/{diretory}/output.parquet')
 
 def create_table(df):
