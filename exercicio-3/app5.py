@@ -72,7 +72,7 @@ def create_raw_layer():
         print(f" Info: Creating RAW Layer - PATH: {path} Diretorio: {directory}")
         os.makedirs(f'{path}/{directory}', exist_ok=True)
         dataframe = read_csv_files_in_directory(directory)
-        #dataframe.write.csv(f'{path}/{directory}/output.csv', sep=';', mode='overwrite', header=True, encoding='latin1')
+        dataframe.write.csv(f'{path}/{directory}/output.csv', sep=';', mode='overwrite', header=True, encoding='latin1')
 
         dataframe = spark.read \
         .option("header", True) \
