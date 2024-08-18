@@ -15,7 +15,7 @@ db_config = {
 }
 
 conn = mysql.connector.connect(**db_config)
-table_name = "tb_banco_ex3_v2"
+table_name = "tb_banco_ex3_v3"
 
 # Inicializando o SparkSession
 spark = SparkSession.builder \
@@ -32,26 +32,25 @@ def read_csv_files_in_directory(directory_path):
         file_path = os.path.join(directory_path, csv_file)
     try:
             if directory_path == "Bancos":
-                #df = spark.read.option("delimiter", "\t").option("header", True).option("encoding", "latin-1").csv(file_path)
-                print(f"    Lendo arquivos: {directory_path}")
+
+                print(f"    Lendo arquivos: Directory Path {directory_path} -- Filepath {file_path}")
                 df = spark.read.options(sep="\t", header=True, encoding="ISO-8859-1").csv(file_path)
-                #df.show(10)
+
                 print (f"    Arquivo Processado: {file_path}")
-                #df = spark.read.csv(file_path, sep='\t', header=True, encoding='latin1', inferSchema=True)
+
             elif directory_path == "Empregados":
-                #df = spark.read.option("delimiter", "\t").option("header", True).option("encoding", "latin-1").csv(f"{directory_path}/*.csv")
-                #df = spark.read.csv(file_path, sep='|', header=True, encoding='latin1', inferSchema=True)
+
                 print(f"    Lendo arquivos: {directory_path}")
                 df = spark.read.options(sep="|", header=True, encoding="ISO-8859-1").csv(file_path)
-                #df.show(10)
+
                 print (f"    Arquivo Processado: {file_path}")
             else:
-                #df = spark.read.option("delimiter", "\t").option("header", True).option("encoding", "latin-1").csv(f"{directory_path}/*.csv")
-                #df = spark.read.csv(file_path, sep=';', header=True, encoding='latin1', inferSchema=True)
+
                 print(f"    Lendo arquivos: {directory_path}")
                 df = spark.read.options(sep=";", header=True, encoding="ISO-8859-1").csv(file_path)
                 #df.show(10)
                 print (f"    Arquivo Processado: {file_path}")
+
 
             dataframes.append(df)
 
@@ -71,9 +70,12 @@ def create_raw_layer():
     for directory in directories_paths:
         print(f" Info: Creating RAW Layer - PATH: {path} Diretorio: {directory}")
         os.makedirs(f'{path}/{directory}', exist_ok=True)
-        dataframe = read_csv_files_in_directory(directory)
-        dataframe.write.csv(f'{path}/{directory}/output.csv', sep=';', mode='overwrite', header=True, encoding='latin1')
 
+        dataframe = read_csv_files_in_directory(directory)
+
+        dataframe.write.csv(f'{path}/{directory}/output.csv', sep=';', mode='overwrite', header=True, encoding='latin1')
+        print("Dataframe =.....")
+        dataframe.show(2)
         dataframe = spark.read \
         .option("header", True) \
         .option("delimiter", ";") \
@@ -81,7 +83,7 @@ def create_raw_layer():
         .option("inferSchema", True) \
         .option("enforceSchema", False) \
         .csv(f'{path}/{directory}/output.csv')
-        
+
 
 def clean_string(df, field):
     pattern = (
@@ -140,18 +142,16 @@ def create_table(df):
     insert_sql = f"INSERT INTO {table_name} ({', '.join(df.columns)}) VALUES ({', '.join(['%s'] * len(df.columns))})"
     
     for row in df.collect():
-        cursor.execute(insert_sql, tuple(row.asDict().values()))  # Converte os valores para tupla
+        cursor.execute(insert_sql, tuple(row.asDict().values()))  
         
     conn.commit()
-
-
 
 def insert_data(df):
     cursor = conn.cursor()
     insert_sql = f"INSERT INTO {table_name} ({', '.join(df.columns)}) VALUES ({', '.join(['%s'] * len(df.columns))})"
     
     for row in df.collect():
-        cursor.execute(insert_sql, tuple(row.asDict().values()))  # Converte os valores para tupla
+        cursor.execute(insert_sql, tuple(row.asDict().values()))  
         
     conn.commit()
 
@@ -175,14 +175,14 @@ def replace_spaces_in_columns(df):
     df = df.toDF(*new_column_names)
     return df
 
-#Prototipo - alterando para funcao union do spark
+#alterando para funcao union do spark
 def delivery_layer():
     path = 'Dados/delivery'
     os.makedirs(path, exist_ok=True)
     directories_paths = ['Bancos', 'Empregados', 'Reclamacoes']
     dataframes = {}
     
-    # Read all parquet files and store DataFrames in a dictionary
+    # Leia todos os arquivos parquet e armazene DataFrames em um dicionário
     for directory in directories_paths:
         dataframe = spark.read.parquet(f'Dados/trusted/{directory}/output.parquet')
         dataframes[directory] = dataframe
@@ -198,22 +198,21 @@ def delivery_layer():
     merged_df.show(2)
     merge_all = merged_df.join(empregados_df, on="campo_limpo", how="inner")
     
-    # Handle column name conflicts
+    # Lida com conflitos de nomes de colunas
     def rename_columns(df, prefix):
-        """Rename columns to avoid conflicts by adding a prefix."""
+        """Renomeie colunas para evitar conflitos adicionando um prefixo."""
         columns = df.columns
         new_columns = [f"{prefix}_{col}" if col in ['Segmento', 'CNPJ'] else col for col in columns]
         return df.toDF(*new_columns)
     
-    # Rename conflicting columns before final join
+    # Renomear colunas conflitantes antes da junção final
     bancos_df = rename_columns(bancos_df, 'bancos')
     reclamacoes_df = rename_columns(reclamacoes_df, 'reclamacoes')
     empregados_df = rename_columns(empregados_df, 'empregados')
   
-    # Perform joins again with renamed columns
+    # Execute join novamente com colunas renomeadas
     merged_df = bancos_df.join(reclamacoes_df, on=["campo_limpo"], how="inner")
-    #merged_df.show(2)
-    
+  
     common_columns = set(merged_df.columns).intersection(set(empregados_df.columns))
     # Renomear colunas do DataFrame merged_df - aqui o campo_limpo_x
     merged_df_renamed = merged_df.select([col(c).alias(c + "_x") if c in common_columns else col(c) for c in merged_df.columns])
@@ -221,21 +220,15 @@ def delivery_layer():
     # Renomear colunas do DataFrame empregados_df
     empregados_df_renamed = empregados_df.select([col(c).alias(c + "_y") if c in common_columns else col(c) for c in empregados_df.columns])
 
-
-
-    # Realizar o join
-    #merge_all = merged_df_renamed.join(empregados_df_renamed, on="campo_limpo", how="inner")
-    #merge_all = merged_df.join(empregados_df, on="campo_limpo", how="inner")
-    #merge_all = merged_df_renamed.merge(empregados_df_renamed, left_on="campo_limpo_x", right_on="campo_limpo_y", how="inner")
     merge_all = merged_df_renamed.join(empregados_df_renamed, merged_df_renamed.campo_limpo_x == empregados_df_renamed.campo_limpo_y, "inner")
     merge_all.show(2)
     
-    # Drop columns with duplicate names (if still any)
+    # Remove colunas com nomes duplicados (se ainda houver)
     cols_to_drop = [col for col in merge_all.columns if col.endswith('_y')]
     merge_all = merge_all.drop(*cols_to_drop)
     
 
-    # Optional: Rename columns if needed
+    # Opcional: renomeie as colunas se necessário
     rename_dict = {
         'bancos_Nome': 'Nome', 
         'Segmento_x': 'Segmento', 
@@ -245,19 +238,17 @@ def delivery_layer():
         if old_name in merge_all.columns:
             merge_all = merge_all.withColumnRenamed(old_name, new_name)
 
-    # Replace spaces in column names
+    # Substituir espaços em nomes de colunas
     merge_all = replace_spaces_in_columns(merge_all)
     
-    # Show the final schema and data
+    # Mostrar o esquema final e os dados
     final_columns = merge_all.columns
-    #print(f"Colunas finais após ajuste: {final_columns}")
-    #merge_all.show(2)
-    
-    # Create table and insert data
+     
+    # Cria tabelas e insere dados
     create_table(merge_all)
     insert_data(merge_all)
     
-    # Write the final DataFrame to Parquet
+    # Escreva o DataFrame final no Parquet
     merge_all.write.parquet(f'{path}/dados_finais.parquet', mode='overwrite')
 
 if __name__ == "__main__":
